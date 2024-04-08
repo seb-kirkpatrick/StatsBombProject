@@ -1,6 +1,7 @@
 library(StatsBombR)
 library(tidyverse)
 library(soccermatics)
+library(SBpitch)
 
 comps <- FreeCompetitions()
 
@@ -92,6 +93,18 @@ loss1j %>%
     arrow = "r"
   )
 
+loss1j %>%
+  filter(type.name == "Pressure", team.name =="Celta Vigo") |>
+  soccerPositionMap(
+    id = "player_nickname",
+    x = "location.x",
+    y = "location.y",
+    fill1 = "red", 
+    arrow = "l",
+    source = "statsbomb"
+  )
+
+
 loss1j |>
   filter(type.name == "Pressure" & team.name == "Barcelona") %>% 
   soccerHeatmap(x = "location.x", 
@@ -116,6 +129,8 @@ loss2j %>%
   filter(type.name == "Pass", team.name =="Barcelona", ) |>
   soccerPositionMap(
     id = "player_nickname",
+    lengthPitch = 105,
+    widthPitch = 75,
     x = "location.x",
     y = "location.y",
     fill1 = "blue", 
@@ -157,3 +172,49 @@ loss3j |>
                 y = "location.y",
                 xBins = 21,
                 yBins = 14)
+
+
+loss1j |>
+  filter(team.name == "Celta Vigo") %>% 
+  soccerPassmap(fill = "red",
+                lengthPitch = 105,
+                widthPitch = 75,
+                minPass = 3,
+                arrow="r")
+loss1j |>
+  filter(team.name == "Barcelona") %>% 
+  soccerPassmap(fill = "blue",
+                minPass = 3,
+                arrow="r")
+
+loss2j |>
+  filter(type.name == "Pass" & team.name == "Real Sociedad") %>% 
+  soccerHeatmap(x = "location.x", 
+                y = "location.y",
+                xBins = 21,
+                yBins = 14)
+
+loss3j |>
+  filter(type.name == "Pass" & team.name == "Málaga") %>% 
+  soccerHeatmap(x = "location.x", 
+                y = "location.y",
+                xBins = 21,
+                yBins = 14)
+
+passes1 = loss1j %>%  
+  filter(type.name=="Pass" & is.na(pass.outcome.name) & team.name=="Barcelona") %>% 
+  filter(pass.end_location.x>=102 & pass.end_location.y<=62 & pass.end_location.y>=18) 
+
+create_Pitch() +
+  geom_segment(data = passes1, aes(x = location.x, 
+                                  y = location.y, 
+                                  xend = pass.end_location.x, 
+                                  yend = pass.end_location.y),
+               lineend = "round", 
+               size = 0.5, colour = "#000000", 
+               arrow = arrow(length = unit(0.07, "inches"), 
+                             ends = "last", 
+                             type = "open")) +
+  scale_x_reverse() +
+  scale_y_reverse() +
+  coord_fixed(ratio = 105/100)

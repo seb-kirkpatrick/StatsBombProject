@@ -1,0 +1,235 @@
+---
+title: "Defensive Report"
+author: "Sebastian Kirkpatrick"
+date: "2024-04-08"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+
+options(warn=-1)
+
+library(StatsBombR)
+library(tidyverse)
+library(soccermatics)
+library(SBpitch)
+
+#Inputting Data
+
+comps <- FreeCompetitions()
+
+szn <- comps |>
+  filter(season_id == 26 &
+           competition_name == "La Liga")
+
+games <- FreeMatches(szn)
+
+data <- allclean(free_allevents(MatchesDF = games, Parallel=T))
+
+minutes <- get.minutesplayed(data) |>
+  group_by(player.id) |>
+  summarize(minutes = sum(MinutesPlayed))
+
+#Identifying which games Barca lost
+
+games <- games |>
+  mutate(Result = case_when(
+    home_team.home_team_name == "Barcelona" & home_score > away_score ~ "W",
+    home_team.home_team_name == "Barcelona" & home_score < away_score ~ "L",
+    away_team.away_team_name == "Barcelona" & home_score > away_score ~ "L",
+    away_team.away_team_name == "Barcelona" & home_score < away_score ~ "W",
+    T ~ "T"
+  ))
+
+l <- games |>
+  filter(Result == "L")
+
+losses <- allclean(free_allevents(MatchesDF = l, Parallel=T))
+
+#First loss: Celta Vigo
+
+loss1 <- losses |>
+  filter(match_id == 267301)
+
+loss1l <- get.lineupsFree(loss1)
+
+nick1 <- loss1l[[3]][[1]][c(1,3)]
+
+loss1j <- left_join(loss1,nick1, by= c("player.id" = "player_id"))
+loss1j <- loss1j |>
+  mutate(player_nickname = ifelse(is.na(player_nickname), player.name, player_nickname))
+
+#Second loss: Real Sociedad
+
+loss2 <- losses |>
+  filter(match_id == 266240)
+
+loss2l <- get.lineupsFree(loss2)
+
+nick2 <- loss2l[[3]][[2]][c(1,3)]
+
+loss2j <- left_join(loss2,nick2, by= c("player.id" = "player_id"))
+loss2j <- loss2j |>
+  mutate(player_nickname = ifelse(is.na(player_nickname), player.name, player_nickname))
+
+#Third loss: Malaga
+
+loss3 <- losses |>
+  filter(match_id == 266148)
+
+loss3l <- get.lineupsFree(loss3)
+
+nick3 <- loss3l[[3]][[2]][c(1,3)]
+
+loss3j <- left_join(loss3,nick3, by= c("player.id" = "player_id"))
+loss3j <- loss3j |>
+  mutate(player_nickname = ifelse(is.na(player_nickname), player.name, player_nickname))
+```
+
+# Stopping Barcelona
+
+In a season where Barcelona lost 4 games, the task of getting 3 points is daunting. The approach this report will take is to look at the game where Barcelona lost, and determine what those teams did that took down the giants. One note is that I will not be using Real Madrid's victory. Real Madrid is a team with similar financial resources as Barcelona, so their style of play will not be something all teams can replicate. However, the 3 other losses were all to teams that did not qualify for European competitions. Celta Vigo, Real Sociedad, and Malaga all beat Barcelona and their strategies in those games will be the key to stopping Barcelona. It is pretty clear from the fact that all 3 of these games ended 1-0 that our main objective is to stop them from scoring. Against Barcelona, points are not an expectation, so any points are good. The focus will be on the pressure applied by these teams and how Barcelona attacked during these games. 
+
+### Game 1: Celta Vigo
+
+```{r}
+
+loss1j[[24]][[2]]
+
+loss1j |>
+  filter(type.name == "Pressure", team.name =="Celta Vigo") |>
+  soccerPositionMap(
+    id = "player_nickname",
+    x = "location.x",
+    y = "location.y",
+    fill1 = "red", 
+    arrow = "l",
+    source = "statsbomb"
+  ) +  scale_x_reverse()
+
+loss1j |>
+  filter(team.name == "Barcelona") %>% 
+  soccerPassmap(fill = "blue",
+                minPass = 3,
+                arrow="r")
+
+passes1 = loss1j |>
+  filter(type.name=="Pass" & is.na(pass.outcome.name) & team.name=="Barcelona") |>
+  filter(pass.end_location.x>=102 & pass.end_location.y<=62 & pass.end_location.y>=18) 
+
+create_Pitch() +
+  geom_segment(data = passes1, aes(x = location.x, 
+                                  y = location.y, 
+                                  xend = pass.end_location.x, 
+                                  yend = pass.end_location.y),
+               lineend = "round", 
+               size = 0.5, colour = "#000000", 
+               arrow = arrow(length = unit(0.07, "inches"), 
+                             ends = "last", 
+                             type = "open")) +
+  scale_y_reverse() +
+  coord_fixed(ratio = 105/100)
+```
+
+Celta Vigo came out in a 4-1-2-3 for their match against Barcelona. The first graph displayed is the average position for each of Vigo's players, both subs and starters, in which they pressured Barcelona. While it may be advantageous to have a high press and force their defenders into mistakes, Barcelona has too much class to attempt this. The second chart shows the passing map of Barcelona that day. We can see their backs push up quite far, and their wings like to play towards the corners of the box, think tiki-taki style. Though the graph is flipped, Messi makes his passes almost where a center forward would. The third graph shows all of the passes into the box that Barcelona completed. There are two groups that stand out. First, there are many crosses swung in from the right wing into the center of the box. Second, many of the passes on the left side of the pitch are more directed to the top of the box. We will look at both of these graphs for the other games, but we can imagine where Neymar is playing a more inverted style, compared to Messi pushing the ball down the wing.
+
+### Game 2: Real Sociedad
+
+```{r}
+
+loss2j[[24]][[1]]
+
+loss2j |>
+  filter(type.name == "Pressure", team.name =="Real Sociedad") |>
+  soccerPositionMap(
+    id = "player_nickname",
+    x = "location.x",
+    y = "location.y",
+    fill1 = "red", 
+    arrow = "l",
+    source = "statsbomb"
+  ) +  scale_x_reverse()
+
+loss2j |>
+  filter(team.name == "Barcelona") %>% 
+  soccerPassmap(fill = "blue",
+                minPass = 3,
+                arrow="r")
+
+passes2 = loss2j |>
+  filter(type.name=="Pass" & is.na(pass.outcome.name) & team.name=="Barcelona") |>
+  filter(pass.end_location.x>=102 & pass.end_location.y<=62 & pass.end_location.y>=18) 
+
+create_Pitch() +
+  geom_segment(data = passes2, aes(x = location.x, 
+                                  y = location.y, 
+                                  xend = pass.end_location.x, 
+                                  yend = pass.end_location.y),
+               lineend = "round", 
+               size = 0.5, colour = "#000000", 
+               arrow = arrow(length = unit(0.07, "inches"), 
+                             ends = "last", 
+                             type = "open")) +
+  scale_y_reverse() +
+  coord_fixed(ratio = 105/100)
+```
+
+Sociedad opted for a more defensive formation, playing a 4-2-1-3, pushing two midfielders to defensive shading. In terms of pressuring, Sociedad has their defensive backs pressure higher up than Vigo, even though both held fairly high and wide pressuring positions. This time, though, they got lucky and M and N  of MSN were not featured in this match. We see a lot of pressures in the middle of the field, which speaks more to the drop in talent for Barcelona in this game. In the passing map, though, we continue to see their backs play up and play through both the midfielders and the wingers. In terms of passing, we see the same balls. However, there is much less service from the wings into the middle of the box. When Messi and Neymar are starting, just pushing them to the outside will not be enough.
+
+### Game 3: Malaga
+
+```{r}
+
+loss3j[[24]][[2]]
+
+loss3j |>
+  filter(type.name == "Pressure", team.name =="Málaga") |>
+  soccerPositionMap(
+    id = "player_nickname",
+    x = "location.x",
+    y = "location.y",
+    fill1 = "red", 
+    arrow = "l",
+    source = "statsbomb"
+  ) + scale_x_reverse()
+
+loss3j |>
+  filter(team.name == "Barcelona") %>% 
+  soccerPassmap(fill = "blue",
+                minPass = 3,
+                arrow="r")
+
+passes3 = loss3j |>
+  filter(type.name=="Pass" & is.na(pass.outcome.name) & team.name=="Barcelona") |>
+  filter(pass.end_location.x>=102 & pass.end_location.y<=62 & pass.end_location.y>=18) 
+
+create_Pitch() +
+  geom_segment(data = passes3, aes(x = location.x, 
+                                  y = location.y, 
+                                  xend = pass.end_location.x, 
+                                  yend = pass.end_location.y),
+               lineend = "round", 
+               size = 0.5, colour = "#000000", 
+               arrow = arrow(length = unit(0.07, "inches"), 
+                             ends = "last", 
+                             type = "open")) +
+  scale_y_reverse() +
+  coord_fixed(ratio = 105/100)
+```
+
+Malaga opted for the classic 4-4-2 against a full-strength attack. The pressure they placed on Barcelona mainly sat in the channel or on the right side. Seeing the passing map, Messi's passes came from further back on the field than we have been seeing. The dangerous passes played by Barcelona came from the wings in this time, but still had balls going to the center of the box, presumably to Suarez, and to the corners of the box. There seem to be more passes from Neymar's side, which makes sense if Messi played a positions not as high on the pitch.
+
+Defensively, slowing MSN was a task that these three teams all showed they were capable of. My initial thoughts of a strategy would have been to play 5 back and park the bus from the get-go. Now, if we were to score, you can bet all 10 of our guys will pack our defensive half for the rest of the game. But from a neutral state, defensive backs are going to be key. Messi and Neymar both play passes into the box, and receive passes cutting in around the top of the box. Offensive backs can be key to a proper build-up, but the goals we are going for and going to be on the counter. Our backs need to be quick and force their wingers out. Pressure early, but letting the wingers cut inside is a mistake we cannot afford to make.
+
+The next key to our formation will be midfielders. I would push for three midfielders who start in the middle, but can support the backs when the ball comes down the flank. Each sided midfielder can aid in when the ball is on the wing and can do a better job pressuring Barcelona;s backs when they come to an offensive position. When the ball is on one side, the opposite side midfielder should push in to cover Barcelona's midfield attack. I would then have one attacking midfielder who will play more like a classic CM. they can help put pressure on the holding midfielders that Barcelona will have directing traffic. Ideally, they can push up on Busquets and help deny Barcelona from switching the attack.
+
+Finally for forwards, we need two speedy guys. If we are going to score, it will be pushing the pace of play on the counter and, honestly, getting a little lucky. Pace will also allow them to come back on defense and pressure Busquets even further, especially when Barcelona is on the attack. When our attacking mid will have to press Xavi or Iniesta, we do not want Busquets to have free possession.
+
+From the brief review of holding positions, opposing passing maps, and dangerous passing, the three main takeaway for a strategy against MSN is:
+
+1. Do not let Messi/Neymar freely cut into the box and play on guys like Suarez. We need backs and midfielder who can pressure their push from the wing, but also know to not get beat cutting in.
+
+2. Barcelona are going to have their back join the attack and allow for Xavi and Iniesta to essentially play as attacking midfielders. We will need to punish this on the counter. Pace is going to be key and their backs pushing up allow for potential attacks on the wings.
+
+3. This was not directly mentioned, but from the pressuring maps, no team played 10 outfield guys against Barcelona for the whole game. Whatever the substitution rules, we need to use all of our subs. We will be chasing Barcelona as they control the attack, so guys will be expected to give 100%. If we get 5 subs, tell the 2 backs and 3 offensive positions to play 100% for 60 minutes. Press and get back on D for an hour, then bring in the subs. even if it is a drop in talent, pace and energy are going to fuel the counter.
